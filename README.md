@@ -1,1 +1,0 @@
-# cyart-vapt-team
