@@ -87,7 +87,7 @@ This project demonstrates a complete Vulnerability Assessment and Penetration Te
 
 ### Nmap Scan
 Description: Identified open ports and services using service version detection.  
-![Nmap](Screenshots/nmap.png)
+![Nmap](Screenshots/(https://github.com/Aksh465/cyart-vapt-team/blob/c37edf9275514fb4924b2ed4af93b7a6095f9196/Screenshots/nmap.png))
 
 ---
 
