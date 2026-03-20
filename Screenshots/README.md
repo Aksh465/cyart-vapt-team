@@ -93,43 +93,43 @@ Description: Identified open ports and services using service version detection.
 
 ### Nikto Scan
 Description: Discovered web server vulnerabilities and misconfigurations.  
-![Nikto](Screenshots/nikto.png)
+![Nikto](nikto.png)
 
 ---
 
 ### Nessus Scan
 Description: Automated scan highlighting critical vulnerabilities in the target system.  
-![Nessus](Screenshots/nessus.png)
+![Nessus](nessus.png)
 
 ---
 
 ### Exploitation (Meterpreter)
 Description: Successful exploitation of PHP-CGI vulnerability resulting in shell access.  
-![Meterpreter](Screenshots/meterpreter.png)
+![Meterpreter](meterpreter.png)
 
 ---
 
 ### SUID Privilege Escalation
 Description: Root access obtained using misconfigured SUID Nmap binary.  
-![SUID](Screenshots/suid.png)
+![SUID](suid.png)
 
 ---
 
 ### Evidence Collection
 Description: Sensitive files transferred from target system for analysis.  
-![Evidence](Screenshots/evidence.png)
+![Evidence](evidence.png)
 
 ---
 
 ### SHA256 Hash Verification
 Description: File integrity verified using sha256sum hashing.  
-![Hash](Screenshots/hash.png)
+![Hash](hash.png)
 
 ---
 
 ### SQL Injection (sqlmap)
 Description: Extracted database data including user credentials using sqlmap.  
-![SQLMap](Screenshots/sqlmap.png)
+![SQLMap](sqlmap.png)
 
 ---
 
