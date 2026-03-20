@@ -87,7 +87,7 @@ This project demonstrates a complete Vulnerability Assessment and Penetration Te
 
 ### Nmap Scan
 Description: Identified open ports and services using service version detection.  
-![Nmap](screenshots/nmap.png)
+![Nmap](Screenshots/nmap.png)
 
 ---
 
