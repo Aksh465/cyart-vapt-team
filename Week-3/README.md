@@ -16,24 +16,6 @@ The project simulates real-world attack scenarios including:
 - Privilege escalation  
 - Full system compromise  
 
-Aligned with industry standards such as **PTES**.
-
-## Project Structure
-├── Theory/
-│ └── Advanced Web Application Penetration Testing & Exploit Development
-│
-├── Practical/
-│ ├── Advanced Exploitation Lab
-│ ├── Web Application Testing Lab
-│ ├── Reporting Practice
-│ └── Post-Exploitation & Evidence Collection
-│
-├── Capstone/
-│ └── Full VAPT Cycle Report
-
-
----
-
 ## Key Components
 
 ### 1. Advanced Exploitation Lab
