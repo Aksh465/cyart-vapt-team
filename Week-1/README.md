@@ -166,4 +166,4 @@ The assessment successfully identified multiple critical and high-risk vulnerabi
 ## 👤 Author
 
 **Akash Bangera**
-VAPT Intern – CyArt
+- VAPT Intern – CyArt
