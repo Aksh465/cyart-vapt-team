@@ -2,26 +2,33 @@
 
 ## Overview
 
-ThreatGraph Team 3 is responsible for calculating vulnerability risk scores received from Team 2, storing findings and risk assessments in PostgreSQL, and publishing the assessed risk to Team 4 using NATS messaging.
+ThreatGraph Team 3 is responsible for receiving vulnerability findings from Team 2, calculating composite risk scores, storing findings and risk assessments in PostgreSQL, and publishing the assessed risk to Team 4 using NATS messaging.
 
-The service provides both:
+The service supports:
 
-- REST APIs (FastAPI) for testing and manual execution.
-- NATS Subscriber for real-time processing from Team 2.
+- Automatic real-time processing using **NATS Messaging**
+- REST APIs (FastAPI) for development and manual testing
 
 ---
 
 # Architecture
 
 ```
-                  Team 2
+                     Team 2
+             (team2_publisher.py)
                      │
-                     │ (Finding)
+                     │ Publish Finding
                      ▼
-             NATS Subscriber
+             NATS Subject
+            team2.findings
+                     │
+                     ▼
+          NATS Subscriber (Team 3)
+     (app/services/nats_subscriber.py)
                      │
                      ▼
             Finding Service
+     (app/services/finding_service.py)
                      │
       ┌──────────────┼──────────────┐
       │              │              │
@@ -29,10 +36,14 @@ The service provides both:
  Store Finding   Calculate Risk   Store Risk
       │
       ▼
-      Publish Risk
+ Publish Risk Assessment
       │
       ▼
-                 Team 4
+     NATS Subject
+team3.risk.assessed
+      │
+      ▼
+Team 4 (team4_subscriber.py)
 ```
 
 ---
@@ -42,7 +53,7 @@ The service provides both:
 - FastAPI REST APIs
 - PostgreSQL Integration
 - SQLAlchemy ORM
-- Risk Score Calculation
+- Composite Risk Score Calculation
 - NATS Subscriber
 - NATS Publisher
 - Pydantic Models
@@ -54,10 +65,11 @@ The service provides both:
 
 - Python 3.13
 - FastAPI
-- SQLAlchemy
 - PostgreSQL
+- SQLAlchemy
 - Pydantic v2
 - NATS Messaging
+- Uvicorn
 
 ---
 
@@ -67,8 +79,8 @@ The service provides both:
 app/
 │
 ├── api/
-│   ├── findings.py
-│   └── risks.py
+│   ├── findings.py          # Development API
+│   └── risks.py             # Development API
 │
 ├── core/
 │   ├── config.py
@@ -90,6 +102,13 @@ app/
 │
 ├── create_tables.py
 └── main.py
+│
+├── team2_publisher.py
+├── team4_subscriber.py
+│
+├── requirements.txt
+├── .env
+└── README.md
 ```
 
 ---
@@ -108,16 +127,22 @@ cd ThreatGraph-Team3
 
 ## Create Virtual Environment
 
-Windows
-
 ```bash
 python -m venv .venv
 ```
 
 Activate
 
+Windows
+
 ```bash
 .venv\Scripts\activate
+```
+
+Linux / macOS
+
+```bash
+source .venv/bin/activate
 ```
 
 ---
@@ -152,13 +177,11 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 # Create Database Tables
 
-Run
-
 ```bash
 python -m app.create_tables
 ```
 
-Expected output
+Expected Output
 
 ```
 Tables created successfully
@@ -166,10 +189,28 @@ Tables created successfully
 
 ---
 
-# Running the Application
+# Start NATS Server
+
+```bash
+nats-server
+```
+
+---
+
+# Run Team 3
 
 ```bash
 uvicorn app.main:app --reload
+```
+
+Expected Output
+
+```
+NATS Subscriber Started
+
+Listening on subject:
+
+team2.findings
 ```
 
 Application
@@ -186,6 +227,58 @@ http://127.0.0.1:8000/docs
 
 ---
 
+# Simulate Team 2
+
+Run
+
+```bash
+python team2_publisher.py
+```
+
+This publishes a sample vulnerability finding to
+
+```
+team2.findings
+```
+
+---
+
+# Simulate Team 4 (Optional)
+
+Open another terminal.
+
+Run
+
+```bash
+python team4_subscriber.py
+```
+
+Expected Output
+
+```
+Waiting for Team 3 Risk Assessments...
+```
+
+Whenever Team 3 publishes a risk assessment, Team 4 receives
+
+```
+Finding ID
+
+Asset ID
+
+Hostname
+
+CVE ID
+
+Risk Score
+
+Priority
+
+Status
+```
+
+---
+
 # API Endpoints
 
 ## Home
@@ -198,11 +291,15 @@ Response
 
 ```json
 {
-  "message": "ThreatGraph Running"
+    "message": "ThreatGraph Running"
 }
 ```
 
 ---
+
+# Development APIs
+
+The following APIs exist only for manual testing and development.
 
 ## Create Demo Finding
 
@@ -210,12 +307,14 @@ Response
 GET /findings/demo
 ```
 
-Creates:
+Creates
 
 - Finding
 - Risk Assessment
 
-Stores both into PostgreSQL.
+Stores both in PostgreSQL.
+
+**Not used in the production workflow.**
 
 ---
 
@@ -233,33 +332,35 @@ POST /risk/calculate/1
 
 Creates a new Risk Assessment for an existing finding.
 
+**Development/testing only.**
+
 ---
 
 # NATS Subjects
 
-## Receive Findings (Team 2 → Team 3)
+## Receive Findings
 
 ```
 team2.findings
 ```
 
-Subscriber automatically:
+The subscriber automatically
 
 - Receives Finding
 - Stores Finding
-- Calculates Risk
+- Calculates Composite Risk
 - Stores Risk Assessment
 - Publishes Result
 
 ---
 
-## Publish Risk (Team 3 → Team 4)
+## Publish Risk
 
 ```
 team3.risk.assessed
 ```
 
-Published payload
+Published Payload
 
 ```json
 {
@@ -275,9 +376,26 @@ Published payload
 
 ---
 
-# Risk Scoring Formula
+# Service Layer
 
-Composite Risk Score is calculated using:
+## finding_service.py
+
+Contains the core business logic.
+
+Responsibilities
+
+- Store Finding
+- Calculate Composite Risk
+- Store Risk Assessment
+- Publish Risk Assessment
+
+Separating business logic from the subscriber improves maintainability and allows reuse by APIs or future services.
+
+---
+
+## risk_scoring.py
+
+Calculates the Composite Risk Score using
 
 - CVSS Score
 - EPSS Score
@@ -285,13 +403,56 @@ Composite Risk Score is calculated using:
 - Exposure Context
 - Exploit Availability (KEV)
 
-Priority Mapping
+Returns
+
+- Risk Score
+- Priority
+
+---
+
+## nats_subscriber.py
+
+Subscribes to
+
+```
+team2.findings
+```
+
+Automatically processes incoming findings using the business logic.
+
+---
+
+## nats_publisher.py
+
+Publishes processed risk assessments to
+
+```
+team3.risk.assessed
+```
+
+for Team 4.
+
+---
+
+# Risk Scoring Formula
+
+Composite Risk Score is calculated using
+
+- CVSS Score
+- EPSS Score
+- Asset Criticality
+- Exposure Context
+- Exploit Availability (KEV)
+
+---
+
+# Priority Mapping
 
 | Score | Priority |
 |--------|----------|
-| >= 8 | CRITICAL |
-| >= 5 | HIGH |
-| >= 3 | MEDIUM |
+| ≥ 8 | CRITICAL |
+| ≥ 5 | HIGH |
+| ≥ 3 | MEDIUM |
 | < 3 | LOW |
 
 ---
@@ -299,25 +460,32 @@ Priority Mapping
 # Workflow
 
 ```
-Team 2
-   │
-   ▼
-Publish Finding
-(team2.findings)
-   │
-   ▼
-NATS Subscriber
-   │
-   ▼
-Finding Service
-   │
-   ├── Store Finding
-   ├── Calculate Risk
-   ├── Store Risk Assessment
-   └── Publish Risk
-             │
-             ▼
-          Team 4
+               TEAM 2
+
+       team2_publisher.py
+               │
+               ▼
+      Publish Finding
+               │
+               ▼
+      team2.findings
+               │
+               ▼
+      NATS Subscriber
+               │
+               ▼
+      finding_service.py
+               │
+               ├── Store Finding
+               ├── Calculate Risk
+               ├── Store Risk
+               └── Publish Risk
+                        │
+                        ▼
+      team3.risk.assessed
+                        │
+                        ▼
+      team4_subscriber.py
 ```
 
 ---
@@ -328,14 +496,14 @@ Finding Service
 
 Stores incoming vulnerability findings.
 
-Fields include
+Fields
 
 - Asset ID
 - Hostname
 - CVE ID
 - Severity
-- CVSS
-- EPSS
+- CVSS Score
+- EPSS Score
 - Criticality
 - Exposure Context
 - Status
@@ -346,7 +514,7 @@ Fields include
 
 Stores calculated risk information.
 
-Fields include
+Fields
 
 - Finding ID
 - Risk Score
@@ -356,18 +524,64 @@ Fields include
 
 ---
 
+# Testing Order
+
+1. Start PostgreSQL
+
+2. Start NATS
+
+```bash
+nats-server
+```
+
+3. Start Team 3
+
+```bash
+uvicorn app.main:app --reload
+```
+
+4. (Optional) Start Team 4
+
+```bash
+python team4_subscriber.py
+```
+
+5. Publish Sample Finding
+
+```bash
+python team2_publisher.py
+```
+
+Observe
+
+- Finding stored
+- Risk calculated
+- Risk stored
+- Risk published
+- Team 4 receives processed message
+
+---
+
+# Notes
+
+- `team2_publisher.py` simulates Team 2 by publishing findings.
+- `team4_subscriber.py` simulates Team 4 by receiving processed risk assessments.
+- `finding_service.py` contains the reusable business logic for processing findings.
+- `findings.py` and `risks.py` are **development/testing APIs** and are **not part of the production workflow**.
+- The production workflow is fully **event-driven** using NATS messaging.
+- Every message received from Team 2 automatically creates:
+  - One record in the `findings` table.
+  - One record in the `risk_assessments` table.
+- Team 4 receives processed results on the `team3.risk.assessed` subject.
+
+---
+
 # Requirements
 
 - Python 3.13+
 - PostgreSQL
 - NATS Server
-
----
-
-# Author
-
-**Akash Bangera**
-
-B.Sc. Information Technology
-
-ThreatGraph Team 3 – Risk Assessment Service
+- FastAPI
+- SQLAlchemy
+- Pydantic v2
+- Uvicorn
